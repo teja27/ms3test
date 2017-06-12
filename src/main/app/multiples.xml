@@ -42,8 +42,6 @@ http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/jso
             <otherwise>
                 <scripting:component doc:name="Groovy">
                     <scripting:script engine="Groovy"><![CDATA[def myIntRage = (message.getInboundProperty('http.query.params').v1).toInteger()..(message.getInboundProperty('http.query.params').v2).toInteger()
-println "Class is: ${myIntRage.class}"
-println "Implements List?: ${myIntRage instanceof java.util.List}"
 println "Contents are: ${myIntRage}"
 return "${myIntRage}"]]></scripting:script>
                 </scripting:component>
@@ -55,7 +53,7 @@ return "${myIntRage}"]]></scripting:script>
 { (payload.values[0] map using (seven=$ splitBy '') {
 	
 	(($):"ME" ) when  (not (sum ($ splitBy ''))/3 is :decimal),
-	//test:((sum ($ splitBy ''))%3) when (sizeOf $) != 1 otherwise $%3 ,
+	
 	
 	(($):"MS3" ) when ((((sizeOf seven) != 1 and (not (((seven[-2..0] joinBy '') - 2*seven[-1])/7 is :decimal))) or ( ((sizeOf seven) == 1) and ((not (seven[0]/7 is :decimal)))))),
 	(($):"MS3 & ME" ) when ((((sizeOf seven) != 1 and (not (((seven[-2..0] joinBy '') - 2*seven[-1])/7 is :decimal))) or ( ((sizeOf seven) == 1) and ((not (seven[0]/7 is :decimal))))) and (not (sum ($ splitBy ''))/3 is :decimal))
