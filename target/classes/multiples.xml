@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns:smtp="http://www.mulesoft.org/schema/mule/smtp" xmlns:context="http://www.springframework.org/schema/context" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:api-platform-gw="http://www.mulesoft.org/schema/mule/api-platform-gw" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:mulexml="http://www.mulesoft.org/schema/mule/xml" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:cxf="http://www.mulesoft.org/schema/mule/cxf" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/cxf http://www.mulesoft.org/schema/mule/cxf/current/mule-cxf.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/xml http://www.mulesoft.org/schema/mule/xml/current/mule-xml.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/api-platform-gw http://www.mulesoft.org/schema/mule/api-platform-gw/current/mule-api-platform-gw.xsd
+http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-current.xsd
+http://www.mulesoft.org/schema/mule/smtp http://www.mulesoft.org/schema/mule/smtp/current/mule-smtp.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd">
+
+   <!--    <http:listener-config name="HTTP_Listener_Configuration" host="localhost" port="8085" doc:name="HTTP Listener Configuration"/> -->
+    <http:request-config name="HTTP_Request_Configuration" protocol="HTTPS" host="${CIF.Host}" port="${CIF.Port}" basePath="${CIF.BasePath}" doc:name="HTTP Request Configuration">
+        <http:basic-authentication username="66de65d352bc471196b2288d1ce726d" password="77ac7e4918794bc5BF61C84A55D53F8F"/>
+        <tls:context>
+            <tls:trust-store insecure="true"/>
+        </tls:context>
+    </http:request-config>
+    <http:request-config name="HTTP_PolicyRequest_Configuration" protocol="HTTPS" host="${PolicyAPI.Host}" port="${PolicyAPI.Port}" basePath="${PolicyAPI.BasePath}" doc:name="HTTP Request Configuration">
+        <http:basic-authentication username="f6b64c8286c147feababee338ded2a4e" password="9f15be761ac746b6AE4778BC1E1CB538"/>
+        <tls:context>
+            <tls:trust-store insecure="true"/>
+        </tls:context>
+    </http:request-config>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="multiplesFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/multiples" doc:name="HTTP"/>
+        <choice doc:name="Choice">
+            <when expression="#[Integer.parseInt(message.inboundProperties.'http.query.params'.v1) &gt; 200 || Integer.parseInt(message.inboundProperties.'http.query.params'.v2) &gt; 200]">
+                <logger message="Number out of range limit" level="INFO" doc:name="Logger"/>
+                <set-payload value="#['Range provided is more than 200'] " doc:name="Set Payload"/>
+                <set-property propertyName="http.status" value="#[500]" doc:name="Property"/>
+            </when>
+            <otherwise>
+                <scripting:component doc:name="Groovy">
+                    <scripting:script engine="Groovy"><![CDATA[def myIntRage = (message.getInboundProperty('http.query.params').v1).toInteger()..(message.getInboundProperty('http.query.params').v2).toInteger()
+println "Class is: ${myIntRage.class}"
+println "Implements List?: ${myIntRage instanceof java.util.List}"
+println "Contents are: ${myIntRage}"
+return "${myIntRage}"]]></scripting:script>
+                </scripting:component>
+                <json:object-to-json-transformer doc:name="Object to JSON"/>
+                <dw:transform-message doc:name="Transform Message">
+                    <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{ (payload.values[0] map using (seven=$ splitBy '') {
+	
+	(($):"ME" ) when  (not (sum ($ splitBy ''))/3 is :decimal),
+	//test:((sum ($ splitBy ''))%3) when (sizeOf $) != 1 otherwise $%3 ,
+	
+	(($):"MS3" ) when ((((sizeOf seven) != 1 and (not (((seven[-2..0] joinBy '') - 2*seven[-1])/7 is :decimal))) or ( ((sizeOf seven) == 1) and ((not (seven[0]/7 is :decimal)))))),
+	(($):"MS3 & ME" ) when ((((sizeOf seven) != 1 and (not (((seven[-2..0] joinBy '') - 2*seven[-1])/7 is :decimal))) or ( ((sizeOf seven) == 1) and ((not (seven[0]/7 is :decimal))))) and (not (sum ($ splitBy ''))/3 is :decimal))
+})
+	}]]></dw:set-payload>
+                </dw:transform-message>
+                <logger level="INFO" doc:name="Logger"/>
+            </otherwise>
+        </choice>
+      <!--   <set-variable variableName="fullName" value="#[xpath3('//*:FirstName') + '  ' + xpath3('//*:LastName')]" doc:name="fullNameVariable"/> --> 
+        <!-- <set-variable variableName="zipCode" value="#[xpath3('//*:PostalCode')]" doc:name="zipCodeVariable"/>     -->
+    </flow>
+</mule>
